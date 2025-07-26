@@ -1,6 +1,8 @@
 from flask import Flask, send_from_directory
 from flask_sock import Sock
-import random, time, threading, json
+import random, time, threading, json, os
+import eventlet
+eventlet.monkey_patch()
 
 app = Flask(__name__, static_folder='static')
 sock = Sock(app)
@@ -8,8 +10,8 @@ sock = Sock(app)
 players = []
 fruit = {"x": 10, "y": 10}
 board_size = 30
-respawn_time = 3  # секунды до возрождения
-invincible_time = 3  # секунды неуязвимости после респавна
+respawn_time = 3
+invincible_time = 3
 target_length = 30
 
 def new_snake():
@@ -24,8 +26,8 @@ def wrap_position(pos):
         "y": pos["y"] % board_size
     }
 
-def is_collision(head, snakes):
-    for part in snakes:
+def is_collision(head, body):
+    for part in body:
         if part["x"] == head["x"] and part["y"] == head["y"]:
             return True
     return False
@@ -61,7 +63,6 @@ def websocket(ws):
                 break
             data = json.loads(msg)
             if data["type"] == "dir":
-                # Запрещаем менять направление в противоположную сторону
                 dx, dy = data["dir"]["x"], data["dir"]["y"]
                 cur_dx, cur_dy = player["dir"]["x"], player["dir"]["y"]
                 if (dx, dy) != (-cur_dx, -cur_dy):
@@ -79,46 +80,37 @@ def game_loop():
         if len(players) == 2:
             for p in players:
                 if not p["alive"]:
-                    # Обработка респавна
                     if now >= p["respawn_timer"]:
                         p["alive"] = True
                         p["snake"] = new_snake()
-                        p["invincible_timer"] = now + invincible_time
                         p["dir"] = {"x": 1, "y": 0}
+                        p["invincible_timer"] = now + invincible_time
                     continue
 
                 snake = p["snake"]
                 dx, dy = p["dir"]["x"], p["dir"]["y"]
-                head = {"x": snake[0]["x"] + dx, "y": snake[0]["y"] + dy}
-                head = wrap_position(head)
+                head = wrap_position({"x": snake[0]["x"] + dx, "y": snake[0]["y"] + dy})
 
-                # Собираем тела всех змей кроме головы текущей
-                other_snakes = [pl for pl in players if pl != p and pl["alive"]]
-                other_bodies = []
-                for pl in other_snakes:
-                    other_bodies.extend(pl["snake"])
-                own_body = snake[1:]  # без головы
-                collision_bodies = other_bodies + own_body
+                # Столкновения
+                other = [pl for pl in players if pl != p and pl["alive"]]
+                other_body = []
+                for pl in other:
+                    other_body.extend(pl["snake"])
+                own_body = snake[1:]
 
-                # Проверяем столкновение, учитывая неуязвимость
                 invincible = p["invincible_timer"] > now
-
-                if not invincible and is_collision(head, collision_bodies):
-                    # смерть
+                if not invincible and is_collision(head, own_body + other_body):
                     p["alive"] = False
                     p["respawn_timer"] = now + respawn_time
                     continue
 
                 snake.insert(0, head)
-
-                # Проверка сбора фрукта
                 if head["x"] == fruit["x"] and head["y"] == fruit["y"]:
                     fruit = random_fruit()
-                    # цель - длина 30, игра можно закончить или что-то сделать, пока просто растём
                 else:
                     snake.pop()
 
-            # Отправляем обновления
+            # Обновление клиентам
             for p in players:
                 try:
                     p["ws"].send(json.dumps({
@@ -135,7 +127,9 @@ def game_loop():
 
         time.sleep(0.15)
 
+# Запуск цикла
 threading.Thread(target=game_loop, daemon=True).start()
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(debug=False, host="0.0.0.0", port=port)
