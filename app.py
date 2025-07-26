@@ -1,11 +1,8 @@
-from quart import Quart, websocket, send_from_directory
-import asyncio
-import random, time, json
-from hypercorn.asyncio import serve
-from hypercorn.config import Config
-import os
 
-app = Quart(__name__, static_folder='static')
+from quart import Quart, websocket, send_from_directory
+import asyncio, random, time, os
+
+app = Quart(__name__, static_folder="static")
 
 players = []
 fruit = {"x": 10, "y": 10}
@@ -14,47 +11,51 @@ respawn_time = 3
 invincible_time = 3
 target_length = 30
 
+
 def new_snake():
     return [{"x": 5, "y": 5}, {"x": 4, "y": 5}]
+
 
 def random_fruit():
     return {"x": random.randint(0, board_size - 1), "y": random.randint(0, board_size - 1)}
 
+
 def wrap_position(pos):
-    return {"x": pos["x"] % board_size, "y": pos["y"] % board_size}
+    return {
+        "x": pos["x"] % board_size,
+        "y": pos["y"] % board_size
+    }
+
 
 def is_collision(head, body):
     return any(part["x"] == head["x"] and part["y"] == head["y"] for part in body)
+
 
 @app.route("/")
 async def index():
     return await send_from_directory("static", "index.html")
 
+
 @app.route("/<path:path>")
 async def static_files(path):
     return await send_from_directory("static", path)
 
+
 @app.websocket("/ws")
 async def ws():
-    if len(players) >= 2:
-        await websocket.send(json.dumps({"type": "full"}))
-        return
-
     player = {
-        "ws": websocket,
+        "ws": websocket._get_current_object(),
         "snake": new_snake(),
         "dir": {"x": 1, "y": 0},
         "alive": True,
         "respawn_timer": 0,
-        "invincible_timer": asyncio.get_event_loop().time() + invincible_time
+        "invincible_timer": time.time() + invincible_time
     }
     players.append(player)
 
     try:
         while True:
             msg = await websocket.receive()
-            if not msg:
-                break
             data = json.loads(msg)
             if data["type"] == "dir":
                 dx, dy = data["dir"]["x"], data["dir"]["y"]
@@ -67,13 +68,14 @@ async def ws():
         if player in players:
             players.remove(player)
 
+
 async def game_loop():
     global fruit
     while True:
-        now = asyncio.get_event_loop().time()
+        now = time.time()
         winner = None
 
-        if len(players) >= 1:
+        if len(players) == 2:
             for p in players:
                 if not p["alive"]:
                     if now >= p["respawn_timer"]:
@@ -129,12 +131,17 @@ async def game_loop():
 
         await asyncio.sleep(0.15)
 
-async def start():
-    app.add_background_task(game_loop)
-    config = Config()
-    port = int(os.environ.get("PORT", 5000))
-    config.bind = [f"0.0.0.0:{port}"]
-    await serve(app, config)
 
 if __name__ == "__main__":
-    asyncio.run(start())
+    import json
+    port = int(os.environ.get("PORT", 5000))
+    loop = asyncio.get_event_loop()
+    loop.create_task(game_loop())
+
+    from hypercorn.asyncio import serve
+    from hypercorn.config import Config
+
+    config = Config()
+    config.bind = [f"0.0.0.0:{port}"]
+
+    loop.run_until_complete(serve(app, config))
