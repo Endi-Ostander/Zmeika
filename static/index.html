@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Мультиплеер Змейка</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Мультиплеер Змейка</h1>
+    <canvas id="game" width="600" height="600"></canvas>
+
+    <!-- Кнопки управления -->
+    <div style="text-align:center; margin-top: 20px;">
+        <button onclick="sendDir(0, -1)">▲</button>
+        <div>
+            <button onclick="sendDir(-1, 0)">◀</button>
+            <button onclick="sendDir(1, 0)">▶</button>
+        </div>
+        <button onclick="sendDir(0, 1)">▼</button>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
