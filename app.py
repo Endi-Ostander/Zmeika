@@ -1,6 +1,9 @@
 from quart import Quart, websocket, send_from_directory
 import asyncio
 import random, time, json
+from hypercorn.asyncio import serve
+from hypercorn.config import Config
+import os
 
 app = Quart(__name__, static_folder='static')
 
@@ -126,18 +129,12 @@ async def game_loop():
 
         await asyncio.sleep(0.15)
 
-@app.before_serving
-async def startup():
+async def start():
     app.add_background_task(game_loop)
+    config = Config()
+    port = int(os.environ.get("PORT", 5000))
+    config.bind = [f"0.0.0.0:{port}"]
+    await serve(app, config)
 
 if __name__ == "__main__":
-    import os
-    from hypercorn.asyncio import serve
-    from hypercorn.config import Config
-    import asyncio
-
-    port = int(os.environ.get("PORT", 5000))
-    config = Config()
-    config.bind = [f"0.0.0.0:{port}"]
-
-    asyncio.run(serve(app, config))
+    asyncio.run(start())
