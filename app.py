@@ -1,8 +1,10 @@
+import eventlet
+eventlet.monkey_patch()
+
 from flask import Flask, send_from_directory
 from flask_sock import Sock
 import random, time, threading, json, os
-import eventlet
-eventlet.monkey_patch()
+
 
 app = Flask(__name__, static_folder='static')
 sock = Sock(app)
@@ -114,8 +116,9 @@ def game_loop():
                     p["snake"].pop()
 
                 # Победа
-                if len(p["snake"]) >= target_length:
+                if len(p["snake"]) >= target_length and all(pl["alive"] for pl in players):
                     winner = p
+
 
             for p in players:
                 try:
@@ -127,7 +130,7 @@ def game_loop():
                             "invincible": pl["invincible_timer"] > now
                         } for pl in players],
                         "fruit": fruit,
-                        "winner": players.index(winner) if winner else None
+                        "winner": players.index(winner) if winner in players else None
                     }))
                 except:
                     pass
