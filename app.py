@@ -5,10 +5,10 @@ import asyncio, random, time, os, json
 app = Quart(__name__, static_folder="static")
 
 players = []
-board_size = 40
+board_size = 30
 respawn_time = 3
 invincible_time = 3
-target_length = 100
+target_length = 60
 fruits = [{"x": random.randint(0, board_size - 1), "y": random.randint(0, board_size - 1)} for _ in range(5)]
 extra_fruits = []  # фрукты, созданные из мёртвых змей
 
