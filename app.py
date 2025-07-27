@@ -5,7 +5,7 @@ import asyncio, random, time, os, json
 app = Quart(__name__, static_folder="static")
 
 players = []
-board_size = 30
+board_size = 40
 respawn_time = 3
 invincible_time = 3
 target_length = 100
