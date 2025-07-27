@@ -144,7 +144,7 @@ async def game_loop():
                 except:
                     pass
 
-        await asyncio.sleep(0.15)
+        await asyncio.sleep(0.25)
 
 
 if __name__ == "__main__":
