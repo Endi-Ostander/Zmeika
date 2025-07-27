@@ -27,7 +27,3 @@ canvas {
 .controls button:active {
     background: #555;
 }
-{
-    touch-action: none;
-    overscroll-behavior: none;
-}
