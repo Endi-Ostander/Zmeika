@@ -10,7 +10,7 @@ extra_fruits = []  # фрукты, созданные из мёртвых зме
 board_size = 30
 respawn_time = 3
 invincible_time = 3
-target_length = 30
+target_length = 100
 
 
 def new_snake():
